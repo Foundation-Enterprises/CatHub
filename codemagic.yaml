@@ -5,7 +5,9 @@ workflows:
     instance_type: mac_mini_m1
 
     integrations:
-      app_store_connect: Codemagic Latest # Ensure this matches your Codemagic integration name
+      # Must exactly match the App Store Connect integration name
+      # configured in Codemagic → Team settings → Integrations
+      app_store_connect: Codemagic Latest
 
     triggering:
       events:
@@ -19,7 +21,7 @@ workflows:
         - apple_credentials
       vars:
         BUNDLE_ID: "Foundation.CatHub"
-        XCODE_PROJECT: "CatHub.xcodeproj" 
+        XCODE_PROJECT: "CatHub.xcodeproj"
         IOS_SCHEME: "CatHub"
       xcode: latest
 
@@ -27,19 +29,31 @@ workflows:
       - name: Initialize Keychains & Fetch Signing Files
         script: |
           keychain initialize
-          
+
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --create
-            
+
+          # If CatHub has extra targets (widget, extension, watch app, etc.)
+          # with their own bundle IDs, repeat fetch-signing-files for each one
+          # here before running use-profiles below.
+
           keychain add-certificates
           xcode-project use-profiles
 
       - name: Set Versioning from Git Tag
         script: |
           cd $CM_BUILD_DIR
-          BUILD_VER="${CM_TAG:-1.0.$BUILD_NUMBER}"
-          agvtool new-version -all $(($BUILD_NUMBER))
+
+          # CM_BUILD_NUMBER is Codemagic's real auto-incrementing build number.
+          # (The previous $BUILD_NUMBER was never defined, so it silently
+          # evaluated to 0 every build.)
+          agvtool new-version -all "$CM_BUILD_NUMBER"
+
+          # Strip the leading "v" from a tag like v1.4.0 -> 1.4.0 and use it
+          # as the marketing version, since releases are tag-triggered.
+          MARKETING_VERSION="${CM_TAG#v}"
+          agvtool new-marketing-version "$MARKETING_VERSION"
 
       - name: Build & Package iOS IPA
         script: |
