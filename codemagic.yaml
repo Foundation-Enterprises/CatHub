@@ -34,7 +34,7 @@ workflows:
           # provisioning profiles and signing automatically.
 
           keychain add-certificates
-          xcode-project use-profiles --automatic-codesign true
+          xcode-project use-profiles --automatic-codesign
 
       - name: Set Versioning from Git Tag
         script: |
