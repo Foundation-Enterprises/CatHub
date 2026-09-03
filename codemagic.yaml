@@ -19,7 +19,7 @@ workflows:
         - apple_credentials # Secure variables: APPLE_ID, APP_SPECIFIC_PASSWORD, TEAM_ID
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.yourcompany.cathub
+        bundle_identifier: com.Foundation.CatHub
       vars:
         XCODE_WORKSPACE: "CatHub.xcworkspace"
         IOS_SCHEME: "CatHub-iOS"
