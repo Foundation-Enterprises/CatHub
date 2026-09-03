@@ -26,45 +26,68 @@ workflows:
       xcode: latest
 
     scripts:
-      - name: Initialize Keychains & Use Xcode Automatic Signing
+      - name: Initialize Keychains (Xcode will manage signing)
         script: |
           keychain initialize
 
-          # Let Xcode (via App Store Connect API integration) manage
-          # provisioning profiles and signing automatically.
+          # We're letting Xcode fully manage provisioning profiles and
+          # code signing during the archive/export steps. Do NOT pre-fetch
+          # profiles; Xcode will request them when -allowProvisioningUpdates
+          # is passed to xcodebuild.
 
           keychain add-certificates
-          xcode-project use-profiles --automatic-codesign
 
       - name: Set Versioning from Git Tag
         script: |
           cd $CM_BUILD_DIR
 
           # CM_BUILD_NUMBER is Codemagic's real auto-incrementing build number.
-          # (The previous $BUILD_NUMBER was never defined, so it silently
-          # evaluated to 0 every build.)
           agvtool new-version -all "$CM_BUILD_NUMBER"
 
-          # CM_TAG is only populated when the build was actually triggered by
-          # a git tag push. A manual "Start new build" from the dashboard
-          # leaves it empty, so guard against that instead of failing here.
           if [ -n "$CM_TAG" ]; then
-            # Strip the leading "v" from a tag like v1.4.0 -> 1.4.0
             MARKETING_VERSION="${CM_TAG#v}"
             agvtool new-marketing-version "$MARKETING_VERSION"
           else
             echo "No CM_TAG on this build — skipping marketing version bump."
           fi
 
-      - name: Build & Package iOS IPA
+      - name: Build & Package iOS IPA (Xcode-driven signing)
         script: |
-          xcode-project build-ipa \
-            --project "$XCODE_PROJECT" \
-            --scheme "$IOS_SCHEME" \
-            --config Release
+          cd "$CM_BUILD_DIR"
+
+          # Create an ExportOptions.plist for automatic signing/export
+          cat > ExportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>teamID</key>
+            <string>PULJN6655X</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+          </dict>
+          </plist>
+          EOF
+
+          # Archive the app (allow Xcode to update provisioning profiles)
+          xcodebuild -project "$XCODE_PROJECT" \
+            -scheme "$IOS_SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath "$CM_BUILD_DIR/${IOS_SCHEME}.xcarchive" \
+            archive -allowProvisioningUpdates
+
+          # Export the archived app to an IPA (allow Xcode to update profiles)
+          xcodebuild -exportArchive \
+            -archivePath "$CM_BUILD_DIR/${IOS_SCHEME}.xcarchive" \
+            -exportOptionsPlist ExportOptions.plist \
+            -exportPath "$CM_BUILD_DIR/exported" \
+            -allowProvisioningUpdates
 
     artifacts:
-      - build/ios/ipa/*.ipa
+      - $CM_BUILD_DIR/exported/*.ipa
       - /tmp/xcodebuild_logs/*.log
 
     publishing:
