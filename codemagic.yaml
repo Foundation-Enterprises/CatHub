@@ -1,0 +1,114 @@
+workflows:
+  multi-platform-release:
+    name: Build macOS (Notarized) & iOS (TestFlight)
+    max_build_duration: 90
+    instance_type: mac_mini_m1
+
+    # -------------------------------------------------------------
+    # AUTOMATIC TRIGGERING ON RELEASE / TAG CREATION
+    # -------------------------------------------------------------
+    triggering:
+      events:
+        - tag # Triggers whenever a Git tag / Release tag is created
+      tag_patterns:
+        - pattern: 'v*' # Triggers on releases matching v1.0.0, v2.1.0, etc.
+          include: true
+
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.yourcompany.cathub
+      mac_signing:
+        distribution_type: developer_id
+        bundle_identifier: com.yourcompany.cathub
+      vars:
+        APP_STORE_CONNECT_ISSUER_ID: Encrypted(...)
+        APP_STORE_CONNECT_KEY_IDENTIFIER: Encrypted(...)
+        APP_STORE_CONNECT_PRIVATE_KEY: Encrypted(...)
+        GITHUB_TOKEN: Encrypted(...) # Set if you want Codemagic to upload build assets back to the GitHub Release
+        
+        XCODE_WORKSPACE: "CatHub.xcworkspace"
+        IOS_SCHEME: "CatHub-iOS"
+        MAC_SCHEME: "CatHub-macOS"
+        
+        APPLE_ID: Encrypted(...)
+        APP_SPECIFIC_PASSWORD: Encrypted(...)
+        TEAM_ID: Encrypted(...)
+      xcode: 14.2
+
+    scripts:
+      - name: Initialize Keychains & Fetch Provisioning Profiles
+        script: |
+          keychain initialize
+          
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+            
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type MAC_APP_DEVELOPMENT \
+            --create
+            
+          keychain add-certificates
+          xcode-project use-profiles
+
+      - name: Set Versioning from Git Tag
+        script: |
+          cd $CM_BUILD_DIR
+          # Uses the tag name (or fallback build number) for versioning
+          BUILD_VER="${CM_TAG:-1.0.$BUILD_NUMBER}"
+          agvtool new-version -all $(($BUILD_NUMBER))
+
+      - name: Build & Package iOS IPA
+        script: |
+          xcode-project build-ipa \
+            --workspace "$XCODE_WORKSPACE" \
+            --scheme "$IOS_SCHEME" \
+            --config Release
+
+      - name: Build, Archive & Notarize macOS App
+        script: |
+          xcodebuild archive \
+            -workspace "$XCODE_WORKSPACE" \
+            -scheme "$MAC_SCHEME" \
+            -configuration Release \
+            -archivePath build/macos/CatHub.xcarchive
+
+          xcodebuild -exportArchive \
+            -archivePath build/macos/CatHub.xcarchive \
+            -exportOptionsPlist macos_export_options.plist \
+            -exportPath build/macos/output
+
+          ditto -c -k --keepParent "build/macos/output/CatHub.app" "build/macos/output/CatHub.zip"
+
+          xcrun notarytool submit "build/macos/output/CatHub.zip" \
+            --apple-id "$APPLE_ID" \
+            --password "$APP_SPECIFIC_PASSWORD" \
+            --team-id "$TEAM_ID" \
+            --wait
+
+          xcrun stapler staple "build/macos/output/CatHub.app"
+
+      # Optional: Upload artifacts back to the GitHub Release draft/tag
+      - name: Upload Artifacts to GitHub Release
+        script: |
+          if [ -n "$CM_TAG" ]; then
+            gh release upload "$CM_TAG" \
+              build/macos/output/CatHub.zip \
+              build/ios/ipa/*.ipa \
+              --clobber
+          fi
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - build/macos/output/CatHub.app
+      - build/macos/output/CatHub.zip
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups:
+          - Internal Testers
+          - External Testers
