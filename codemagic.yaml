@@ -5,7 +5,7 @@ workflows:
     instance_type: mac_mini_m1
 
     integrations:
-      app_store_connect: AppStoreConnect_Integration_Name # Replace with your Codemagic Integration name
+      app_store_connect: Codemagic Latest  # Replace with your Codemagic Integration name
 
     triggering:
       events:
