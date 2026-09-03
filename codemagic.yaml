@@ -23,7 +23,7 @@ workflows:
         XCODE_WORKSPACE: "CatHub.xcworkspace"
         IOS_SCHEME: "CatHub-iOS"
         MAC_SCHEME: "CatHub-macOS"
-      xcode: 14.2
+      xcode: latest
 
     scripts:
       - name: Initialize Keychains & Force Create Provisioning Profiles
