@@ -5,7 +5,7 @@ workflows:
     instance_type: mac_mini_m1
 
     integrations:
-      app_store_connect: Codemagic Latest  # Replace with your Codemagic Integration name
+      app_store_connect: CatHub_ASC # Ensure this matches your Codemagic integration name
 
     triggering:
       events:
@@ -16,11 +16,11 @@ workflows:
 
     environment:
       groups:
-        - apple_credentials # APPLE_ID, APP_SPECIFIC_PASSWORD, TEAM_ID
+        - apple_credentials
       vars:
-        # Fixed exact casing here
         BUNDLE_ID: "com.Foundation.CatHub"
-        XCODE_WORKSPACE: "CatHub.xcworkspace"
+        # Swapped to .xcodeproj since workspace doesn't exist
+        XCODE_PROJECT: "CatHub.xcodeproj" 
         IOS_SCHEME: "CatHub-iOS"
         MAC_SCHEME: "CatHub-macOS"
       xcode: latest
@@ -30,19 +30,15 @@ workflows:
         script: |
           keychain initialize
           
-          # 1. Fetch/Create iOS App Store Profile
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --create
             
-          # 2. Fetch/Create macOS Direct / Developer ID Profile
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type MAC_APP_DIRECT \
             --create
             
           keychain add-certificates
-          
-          # Apply profiles to Xcode workspace
           xcode-project use-profiles
 
       - name: Set Versioning from Git Tag
@@ -53,15 +49,17 @@ workflows:
 
       - name: Build & Package iOS IPA
         script: |
+          # Changed --workspace to --project
           xcode-project build-ipa \
-            --workspace "$XCODE_WORKSPACE" \
+            --project "$XCODE_PROJECT" \
             --scheme "$IOS_SCHEME" \
             --config Release
 
       - name: Build, Archive & Notarize macOS App
         script: |
+          # Changed -workspace to -project
           xcodebuild archive \
-            -workspace "$XCODE_WORKSPACE" \
+            -project "$XCODE_PROJECT" \
             -scheme "$MAC_SCHEME" \
             -configuration Release \
             -archivePath build/macos/CatHub.xcarchive
