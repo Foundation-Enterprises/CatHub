@@ -20,7 +20,7 @@ workflows:
       vars:
         BUNDLE_ID: "com.Foundation.CatHub"
         XCODE_PROJECT: "CatHub.xcodeproj" 
-        IOS_SCHEME: "CatHub-iOS"
+        IOS_SCHEME: "CatHub"
       xcode: latest
 
     scripts:
