@@ -4,7 +4,6 @@ workflows:
     max_build_duration: 90
     instance_type: mac_mini_m1
 
-    # Fix: Placed directly under the workflow, outside of 'environment'
     integrations:
       app_store_connect: AppStoreConnect_Integration_Name # Replace with your Codemagic Integration name
 
@@ -16,6 +15,8 @@ workflows:
           include: true
 
     environment:
+      groups:
+        - apple_credentials # Secure variables: APPLE_ID, APP_SPECIFIC_PASSWORD, TEAM_ID
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.yourcompany.cathub
@@ -23,23 +24,19 @@ workflows:
         XCODE_WORKSPACE: "CatHub.xcworkspace"
         IOS_SCHEME: "CatHub-iOS"
         MAC_SCHEME: "CatHub-macOS"
-        
-        APPLE_ID: Encrypted(...)
-        APP_SPECIFIC_PASSWORD: Encrypted(...)
-        TEAM_ID: Encrypted(...)
       xcode: 14.2
 
     scripts:
-      - name: Initialize Keychains & Fetch Provisioning Profiles
+      - name: Initialize Keychains & Auto-Generate Signing Files
         script: |
           keychain initialize
           
-          # Fetch iOS Signing Files
+          # Automatically generates a new iOS Distribution cert + profile if missing
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --create
             
-          # Fetch macOS Developer ID Signing Files
+          # Automatically generates a new macOS Developer ID cert + profile if missing
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type MAC_APP_DEVELOPMENT \
             --create
