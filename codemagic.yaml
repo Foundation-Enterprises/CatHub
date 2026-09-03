@@ -5,7 +5,7 @@ workflows:
     instance_type: mac_mini_m1
 
     integrations:
-      app_store_connect: CatHub_ASC # Ensure this matches your Codemagic integration name
+      app_store_connect: Codemagic Latest # Ensure this matches your Codemagic integration name
 
     triggering:
       events:
