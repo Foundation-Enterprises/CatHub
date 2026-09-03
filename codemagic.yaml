@@ -39,7 +39,7 @@ workflows:
           # here before running use-profiles below.
 
           keychain add-certificates
-          xcode-project use-profiles
+          xcode-project use-profiles --automatic-codesign true
 
       - name: Set Versioning from Git Tag
         script: |
