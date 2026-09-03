@@ -1,11 +1,11 @@
 workflows:
   multi-platform-release:
-    name: Build iOS & macOS (Notarized) & Deploy to TestFlight
-    max_build_duration: 90
+    name: Build iOS & Deploy to TestFlight
+    max_build_duration: 60
     instance_type: mac_mini_m1
 
     integrations:
-      app_store_connect: Codemagic Latest
+      app_store_connect: Codemagic Latest # Ensure this matches your Codemagic integration name
 
     triggering:
       events:
@@ -18,10 +18,9 @@ workflows:
       groups:
         - apple_credentials
       vars:
-        BUNDLE_ID: "com.Foundation.CatHub"
+        BUNDLE_ID: "Foundation.CatHub"
         XCODE_PROJECT: "CatHub.xcodeproj" 
         IOS_SCHEME: "CatHub"
-        MAC_SCHEME: "CatHub"
       xcode: latest
 
     scripts:
@@ -31,10 +30,6 @@ workflows:
           
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
-            --create
-            
-          app-store-connect fetch-signing-files "$BUNDLE_ID" \
-            --type MAC_APP_DIRECT \
             --create
             
           keychain add-certificates
@@ -53,36 +48,8 @@ workflows:
             --scheme "$IOS_SCHEME" \
             --config Release
 
-      - name: Build, Archive & Notarize macOS App
-        script: |
-          xcodebuild archive \
-            -project "$XCODE_PROJECT" \
-            -scheme "$MAC_SCHEME" \
-            -configuration Release \
-            -archivePath build/macos/CatHub.xcarchive \
-            -allowProvisioningUpdates \
-            DEVELOPMENT_TEAM="$TEAM_ID"
-
-          xcodebuild -exportArchive \
-            -archivePath build/macos/CatHub.xcarchive \
-            -exportOptionsPlist macos_export_options.plist \
-            -exportPath build/macos/output \
-            -allowProvisioningUpdates
-
-          ditto -c -k --keepParent "build/macos/output/CatHub.app" "build/macos/output/CatHub.zip"
-
-          xcrun notarytool submit "build/macos/output/CatHub.zip" \
-            --apple-id "$APPLE_ID" \
-            --password "$APP_SPECIFIC_PASSWORD" \
-            --team-id "$TEAM_ID" \
-            --wait
-
-          xcrun stapler staple "build/macos/output/CatHub.app"
-
     artifacts:
       - build/ios/ipa/*.ipa
-      - build/macos/output/CatHub.app
-      - build/macos/output/CatHub.zip
       - /tmp/xcodebuild_logs/*.log
 
     publishing:
