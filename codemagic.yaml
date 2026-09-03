@@ -16,32 +16,33 @@ workflows:
 
     environment:
       groups:
-        - apple_credentials # Secure variables: APPLE_ID, APP_SPECIFIC_PASSWORD, TEAM_ID
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.Foundation.CatHub
+        - apple_credentials # APPLE_ID, APP_SPECIFIC_PASSWORD, TEAM_ID
       vars:
+        # Fixed exact casing here
+        BUNDLE_ID: "com.Foundation.CatHub"
         XCODE_WORKSPACE: "CatHub.xcworkspace"
         IOS_SCHEME: "CatHub-iOS"
         MAC_SCHEME: "CatHub-macOS"
       xcode: 14.2
 
     scripts:
-      - name: Initialize Keychains & Auto-Generate Signing Files
+      - name: Initialize Keychains & Force Create Provisioning Profiles
         script: |
           keychain initialize
           
-          # Automatically generates a new iOS Distribution cert + profile if missing
+          # 1. Fetch/Create iOS App Store Profile
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --create
             
-          # Automatically generates a new macOS Developer ID cert + profile if missing
+          # 2. Fetch/Create macOS Direct / Developer ID Profile
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
-            --type MAC_APP_DEVELOPMENT \
+            --type MAC_APP_DIRECT \
             --create
             
           keychain add-certificates
+          
+          # Apply profiles to Xcode workspace
           xcode-project use-profiles
 
       - name: Set Versioning from Git Tag
