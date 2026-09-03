@@ -26,17 +26,12 @@ workflows:
       xcode: latest
 
     scripts:
-      - name: Initialize Keychains & Fetch Signing Files
+      - name: Initialize Keychains & Use Xcode Automatic Signing
         script: |
           keychain initialize
 
-          app-store-connect fetch-signing-files "$BUNDLE_ID" \
-            --type IOS_APP_STORE \
-            --create
-
-          # If CatHub has extra targets (widget, extension, watch app, etc.)
-          # with their own bundle IDs, repeat fetch-signing-files for each one
-          # here before running use-profiles below.
+          # Let Xcode (via App Store Connect API integration) manage
+          # provisioning profiles and signing automatically.
 
           keychain add-certificates
           xcode-project use-profiles --automatic-codesign true
