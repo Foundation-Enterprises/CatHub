@@ -50,10 +50,16 @@ workflows:
           # evaluated to 0 every build.)
           agvtool new-version -all "$CM_BUILD_NUMBER"
 
-          # Strip the leading "v" from a tag like v1.4.0 -> 1.4.0 and use it
-          # as the marketing version, since releases are tag-triggered.
-          MARKETING_VERSION="${CM_TAG#v}"
-          agvtool new-marketing-version "$MARKETING_VERSION"
+          # CM_TAG is only populated when the build was actually triggered by
+          # a git tag push. A manual "Start new build" from the dashboard
+          # leaves it empty, so guard against that instead of failing here.
+          if [ -n "$CM_TAG" ]; then
+            # Strip the leading "v" from a tag like v1.4.0 -> 1.4.0
+            MARKETING_VERSION="${CM_TAG#v}"
+            agvtool new-marketing-version "$MARKETING_VERSION"
+          else
+            echo "No CM_TAG on this build — skipping marketing version bump."
+          fi
 
       - name: Build & Package iOS IPA
         script: |
