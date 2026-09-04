@@ -61,9 +61,9 @@ enum CatHubTab: String, CaseIterable, Identifiable {
 
     var symbol: String {
         switch self {
-        case .randomizer: return "cat.fill"
-        case .saved: return "heart.fill"
         case .settings: return "gearshape.fill"
+        case .saved: return "heart.fill"
+        case .randomizer: return "cat.fill"
         }
     }
 }
@@ -76,7 +76,6 @@ enum CatHubTintChoice: String, CaseIterable, Identifiable {
     case pink, hotPink
     case brown
     case graphite, midnight, black, white
-    case rainbow
 
     var id: String { rawValue }
 
@@ -107,7 +106,6 @@ enum CatHubTintChoice: String, CaseIterable, Identifiable {
         case .midnight: return Color(red: 0.05, green: 0.08, blue: 0.14)
         case .black: return .black
         case .white: return .white
-        case .rainbow: return .purple
         }
     }
 
@@ -131,7 +129,6 @@ enum CatHubTintChoice: String, CaseIterable, Identifiable {
         case .midnight: return "moon.stars.fill"
         case .black: return "circle.fill"
         case .white: return "circle"
-        case .rainbow: return "paintpalette.fill"
         }
     }
 }
@@ -441,7 +438,7 @@ struct SavedView: View {
         VStack(spacing: 10) {
             Text("Saved")
                 .font(.system(size: 44, weight: .bold))
-            Text("You haven't favorited any cats yet.\nGo collect some kitties!")
+            Text("You haven't favorited any images yet.\nGo collect some kitties!")
                 .font(.system(size: 15))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -522,7 +519,7 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle("Settings")
+            .navigationTitle("Preferences")
         }
     }
 }
@@ -1007,7 +1004,7 @@ struct CatInfoBackCard: View {
     private var fallbackDescription: String {
         switch image.source {
         case .cataas:
-            return "This cat came from CATAAS — it's pure chaos-energy, no breed metadata. Just vibes."
+            return "Unable to pull this Cat's information"
         case .theCatAPI:
             return "Description was pushed off the table."
         }
@@ -1643,10 +1640,4 @@ extension Array where Element == CatImage {
         }
         return out
     }
-}
-
-// MARK: - Preview
-
-#Preview {
-    ContentView()
 }
