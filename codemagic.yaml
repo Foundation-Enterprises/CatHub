@@ -5,43 +5,38 @@ workflows:
     instance_type: mac_mini_m1
 
     integrations:
-      # Must exactly match the App Store Connect integration name
-      # configured in Codemagic → Team settings → Integrations
       app_store_connect: Codemagic Latest
-
-    triggering:
-      events:
-        - tag
-      tag_patterns:
-        - pattern: 'v*'
-          include: true
 
     environment:
       groups:
         - apple_credentials
       vars:
-        BUNDLE_ID: "Foundation.CatHub"
+        BUNDLE_ID: "com.foundation.cathub"
         XCODE_PROJECT: "CatHub.xcodeproj"
         IOS_SCHEME: "CatHub"
       xcode: latest
 
     scripts:
-      - name: Initialize Keychains (Xcode will manage signing)
+      - name: Initialize Keychains
         script: |
           keychain initialize
 
-          # We're letting Xcode fully manage provisioning profiles and
-          # code signing during the archive/export steps. Do NOT pre-fetch
-          # profiles; Xcode will request them when -allowProvisioningUpdates
-          # is passed to xcodebuild.
+      - name: Fetch signing files from App Store Connect
+        script: |
+          # Uses your Codemagic integration API key to fetch/create the exact profiles needed
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
 
+      - name: Add certificates to keychain
+        script: |
           keychain add-certificates
+
+      - name: Set up code signing settings in Xcode project
+        script: |
+          xcode-project use-profiles
 
       - name: Set Versioning from Git Tag
         script: |
           cd $CM_BUILD_DIR
-
-          # CM_BUILD_NUMBER is Codemagic's real auto-incrementing build number.
           agvtool new-version -all "$CM_BUILD_NUMBER"
 
           if [ -n "$CM_TAG" ]; then
@@ -51,43 +46,14 @@ workflows:
             echo "No CM_TAG on this build — skipping marketing version bump."
           fi
 
-      - name: Build & Package iOS IPA (Xcode-driven signing)
+      - name: Build & Package iOS IPA
         script: |
           cd "$CM_BUILD_DIR"
-
-          # Create an ExportOptions.plist for automatic signing/export
-          cat > ExportOptions.plist <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>app-store</string>
-            <key>teamID</key>
-            <string>PULJN6655X</string>
-            <key>signingStyle</key>
-            <string>automatic</string>
-          </dict>
-          </plist>
-          EOF
-
-          # Archive the app (allow Xcode to update provisioning profiles)
-          xcodebuild -project "$XCODE_PROJECT" \
-            -scheme "$IOS_SCHEME" \
-            -configuration Release \
-            -sdk iphoneos \
-            -archivePath "$CM_BUILD_DIR/${IOS_SCHEME}.xcarchive" \
-            archive -allowProvisioningUpdates
-
-          # Export the archived app to an IPA (allow Xcode to update profiles)
-          xcodebuild -exportArchive \
-            -archivePath "$CM_BUILD_DIR/${IOS_SCHEME}.xcarchive" \
-            -exportOptionsPlist ExportOptions.plist \
-            -exportPath "$CM_BUILD_DIR/exported" \
-            -allowProvisioningUpdates
+          # This Codemagic wrapper handles the complex xcodebuild export options automatically
+          xcode-project build-ipa --project "$XCODE_PROJECT" --scheme "$IOS_SCHEME"
 
     artifacts:
-      - $CM_BUILD_DIR/exported/*.ipa
+      - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
 
     publishing:
