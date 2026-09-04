@@ -510,14 +510,14 @@ struct SettingsView: View {
                 }
 
                 Section("About CatHub") {
-                    Text("CatHub is a tiny, cozy app designed to bring immediate joy.\n\nJust cats. Randomized. Saveable. Customizable. That's it.")
+                    Text("CatHub is a tiny, cozy app designed to put you in a Cat Coma.")
                         .font(.system(size: 14))
                         .foregroundStyle(.secondary)
                         .padding(.vertical, 8)
                 }
 
                 Section("Version") {
-                    Text("0.1.0B - The Simplicity Update.")
+                    Text("1.0.0 - The Golden Gate Update./n09/03/2026")
                         .font(.system(size: 14))
                         .foregroundStyle(.secondary)
                 }
